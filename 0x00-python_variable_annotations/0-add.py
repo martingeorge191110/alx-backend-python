@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-module containing add function
+add function
 """
 
 
