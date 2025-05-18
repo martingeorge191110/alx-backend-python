@@ -5,6 +5,9 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 from parameterized import parameterized
 from client import GithubOrgClient
+from fixtures import TEST_PAYLOAD
+import json
+from unittest import TestCase
 
 
 class TestGithubOrgClient(TestCase):
@@ -31,7 +34,11 @@ class TestGithubOrgClient(TestCase):
         client_has_license = github_client.has_license(repo, license_key)
         self.assertEqual(client_has_license, exptected)
 
-class TestIntegrationGithubOrgClient(unittest.TestCase):
+@parameterized_class(
+    ("org_payload", "repos_payload", "expected_repos", "apache2_repos"),
+    TEST_PAYLOAD
+)
+class TestIntegrationGithubOrgClient(TestCase):
     """ Class for Integration test of fixtures """
 
     @classmethod
