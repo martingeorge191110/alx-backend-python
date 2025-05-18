@@ -1,38 +1,72 @@
 #!/usr/bin/env python3
-"""testing module for GithubOrgClient in client.py"""
+""" Module for testing client """
 
-from unittest import TestCase
-from unittest.mock import Mock, patch
-from parameterized import parameterized
 from client import GithubOrgClient
 from fixtures import TEST_PAYLOAD
+from parameterized import parameterized, parameterized_class
 import json
 from unittest import TestCase
+from unittest.mock import patch, PropertyMock, Mock
 
 
 class TestGithubOrgClient(TestCase):
-    """class for testing GithubOrgClient class"""
+    """ Class for Testing Github Org Client """
 
     @parameterized.expand([
-        ("googel", {"name": "google"}),
-        ("abc", {"name": "abc"}),
+        ('google'),
+        ('abc')
     ])
     @patch('client.get_json')
-    def test_org(self, org, res, mock_get_json):
-        """test org method"""
-        mock_get_json.return_value = Mock(return_value=res)
-        github_client = GithubOrgClient(org)
-        self.assertEqual(github_client.org(), res)
+    def test_org(self, input, mock):
+        """Test that GithubOrgClient.org
+        returns the correct value"""
+        testing_class = GithubOrgClient(input)
+        testing_class.org()
+        mock.assert_called_once_with(f'https://api.github.com/orgs/{input}')
+
+    def test_public_repos_url(self):
+        """ Test that the result of _public_repos_url is the expected one
+        based on the mocked payload
+        """
+        with patch('client.GithubOrgClient.org',
+                   new_callable=PropertyMock) as mock:
+            payload = {"repos_url": "World"}
+            mock.return_value = payload
+            testing_class = GithubOrgClient('test')
+            result = testing_class._public_repos_url
+            self.assertEqual(result, payload["repos_url"])
+
+    @patch('client.get_json')
+    def test_public_repos(self, mock_json):
+        """
+        Test that the list of repos is what expect from the payload.
+        Test that the mocked property and get_json.
+        """
+        payload = [{"name": "Google"}, {"name": "Twitter"}]
+        mock_json.return_value = payload
+
+        with patch('client.GithubOrgClient._public_repos_url',
+                   new_callable=PropertyMock) as mock_public:
+
+            mock_public.return_value = "hello/world"
+            test_class = GithubOrgClient('test')
+            result = test_class.public_repos()
+
+            check = [i["name"] for i in payload]
+            self.assertEqual(result, check)
+
+            mock_public.assert_called_once()
+            mock_json.assert_called_once()
 
     @parameterized.expand([
         ({"license": {"key": "my_license"}}, "my_license", True),
         ({"license": {"key": "other_license"}}, "my_license", False)
     ])
-    def test_has_license(self, repo, license_key, exptected):
-        """test has_license method"""
-        github_client = GithubOrgClient("my org")
-        client_has_license = github_client.has_license(repo, license_key)
-        self.assertEqual(client_has_license, exptected)
+    def test_has_license(self, repo, license_key, expected):
+        """ unit-test for GithubOrgClient.has_license """
+        result = GithubOrgClient.has_license(repo, license_key)
+        self.assertEqual(result, expected)
+
 
 @parameterized_class(
     ("org_payload", "repos_payload", "expected_repos", "apache2_repos"),
@@ -44,7 +78,7 @@ class TestIntegrationGithubOrgClient(TestCase):
     @classmethod
     def setUpClass(cls):
         """A class method called before
-        tests in an individual class are run"""
+        tests in an individual class"""
 
         config = {'return_value.json.side_effect':
                   [
@@ -67,8 +101,8 @@ class TestIntegrationGithubOrgClient(TestCase):
         self.mock.assert_called()
 
     def test_public_repos_with_license(self):
-        """ Integration test for
-        public repos with License """
+        """ Integration test for public
+        repos with License """
         test_class = GithubOrgClient("google")
 
         self.assertEqual(test_class.public_repos(), self.expected_repos)
@@ -79,6 +113,6 @@ class TestIntegrationGithubOrgClient(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """A class method called after
-        tests in an individual class have run"""
+        """A class method called after tests
+        in an individual class have run"""
         cls.get_patcher.stop()
